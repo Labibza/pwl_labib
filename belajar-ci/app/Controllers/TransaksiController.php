@@ -142,19 +142,27 @@ class TransaksiController extends BaseController
 
     public function buy()
     {
-        if ($this->request->getPost()) { 
+        if ($this->request->getPost()) {
+            $total_harga = $this->request->getPost('total_harga');
+            $ongkir = $this->request->getPost('ongkir');
+
+            $ppn = $this->hitungPPN($total_harga);
+            $biaya_admin = $this->hitungBiayaAdmin($total_harga);
+            $grand_total = $total_harga + $ongkir + $ppn + $biaya_admin;
+
             $dataForm = [
                 'username' => $this->request->getPost('username'),
-                'total_harga' => $this->request->getPost('total_harga'),
+                'total_harga' => $total_harga,
                 'alamat' => $this->request->getPost('alamat'),
-                'ongkir' => $this->request->getPost('ongkir'),
+                'ongkir' => $ongkir,
+                'ppn' => $ppn,
+                'biaya_admin' => $biaya_admin,
                 'status' => 0,
                 'created_at' => date("Y-m-d H:i:s"),
                 'updated_at' => date("Y-m-d H:i:s")
             ];
 
             $this->transaction->insert($dataForm);
-
             $last_insert_id = $this->transaction->getInsertID();
 
             foreach ($this->cart->contents() as $value) {
@@ -171,10 +179,29 @@ class TransaksiController extends BaseController
                 $this->transaction_detail->insert($dataFormDetail);
             }
 
-            $this->cart->destroy();
-    
+                $this->cart->destroy();
+
             return redirect()->to(base_url());
         }
     }
+
+    private function hitungPPN($total)
+    {
+        return 0.11 * $total;
+    }
+
+    private function hitungBiayaAdmin($total)
+    {
+        if ($total <= 20000000) {
+            return 0.006 * $total;
+        } elseif ($total <= 40000000) {
+            return 0.008 * $total;
+        } elseif ($total > 40000000) {
+            return 0.01 * $total;
+        } else {
+            return 0;
+        }
+    }
+
 
 }
